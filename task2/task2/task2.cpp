@@ -1,118 +1,129 @@
-#include <iostream>   
-#include <map>        // Підключення бібліотеки для роботи з асоціативними масивами (map)
-#include <string>     // Підключення бібліотеки для роботи зі строками (string)
-#include <cstdlib>    // Підключення для функцій генерації випадкових чисел (rand)
-#include <ctime>      // Підключення для роботи з часом (time)
-#include <iomanip>    // Підключення для форматування виведення (setw)
-using namespace std;  
+#include <iostream>
+#include <string>
+#include <cstdlib>
+#include <ctime>
 
-// Клас асоціативного масиву між двома сутностями
+using namespace std;
+
+// Структура для збереження пари "Ім'я - Код"
+struct Pair {
+    string fullName;
+    int code;
+};
+
+// Власний асоціативний масив
 class AssociativeArray {
 private:
-    map<string, string> data; // Визначення асоціативного масиву (ключ - значення, тип string)
-    int CodeError;  // Змінна для збереження коду помилки
+    Pair* data;
+    int size;
+    int capacity;
+    int CodeError;
+
+    void resize() { // Функція збільшення розміру масиву при заповненні
+        capacity *= 2;
+        Pair* newData = new Pair[capacity];
+        for (int i = 0; i < size; i++) { // Копіюємо старі дані в новий масив
+            newData[i] = data[i];
+        }
+        delete[] data;
+        data = newData;
+    }
 
 public:
-    // Конструктор
-    AssociativeArray() : CodeError(0) {   // Ініціалізація конструктора. Код помилки за замовчуванням = 0
-        srand(time(0)); // Ініціалізація генератора випадкових чисел з поточного часу
+    AssociativeArray(int initialCapacity = 10) {
+        size = 0;
+        capacity = initialCapacity;
+        data = new Pair[capacity];
+        CodeError = 0;
     }
 
-    // Функція додавання сутностей у асоціативний масив
-    void add(const string& fullName, const string& code) {
-        data[fullName] = code;  // Додаємо пару ключ-значення в масив
+    ~AssociativeArray() {
+        delete[] data;
     }
 
-    // Перевантаження операції [] для доступу до елементів масиву
-    string& operator[](const string& fullName) {
-        if (data.find(fullName) == data.end()) {  // Перевірка чи є ключ у масиві
-            CodeError = 1;  // Якщо ні, встановлюємо код помилки
-            throw runtime_error("Помилка: сутність не знайдена!");  // Викидаємо помилку
+    void add(const string& fullName, int code) { // Функція додавання нової пари
+        for (int i = 0; i < size; i++) { // Перевіряємо, чи є вже таке ім'я
+            if (data[i].fullName == fullName) {
+                data[i].code = code;
+                return;
+            }
         }
-        return data[fullName];  // Повертаємо значення по ключу
-    }
-
-    // Перевантаження операції виклику функції для доступу до елементів масиву
-    string operator()(const string& fullName) const {
-        if (data.find(fullName) == data.end()) {  // Перевірка чи є ключ у масиві
-            return "Помилка: сутність не знайдена!";  // Якщо немає, повертаємо повідомлення про помилку
+        if (size == capacity) { // Якщо масив заповнений, розширюємо його
+            resize();
         }
-        return data.at(fullName);  // Повертаємо значення по ключу
+        data[size++] = {fullName, code};
     }
 
-    // Генерація випадкових даних (від 3 до 10 пар)
-    void generateRandomData() {
-        string firstNames[] = {"Ivan", "Petro", "Maria", "Oksana", "Dmytro", "Anna", "Serhii", "Olena", "Yurii", "Nadia"};  // Массив імен
-        string lastNames[] = {"Shevchenko", "Kovalenko", "Boyko", "Tkachenko", "Kozak", "Melnyk", "Kharchenko", "Dovzhenko", "Zinchenko", "Hrytsenko"};  // Массив прізвищ
-        int count = rand() % 8 + 3; // Випадкове число від 3 до 10 для кількості пар
-        for (int i = 0; i < count; i++) {
-            string fullName = firstNames[rand() % 10] + " " + lastNames[rand() % 10];  // Створення випадкового повного імені
-            string code = to_string(rand() % 90000 + 10000);  // Генерація випадкового коду
-            add(fullName, code);  // Додавання в асоціативний масив
+    int& operator[](const string& fullName) { 
+        for (int i = 0; i < size; i++) { // Шукаємо ім'я в масиві
+            if (data[i].fullName == fullName) {
+                return data[i].code;
+            }
         }
+        CodeError = 1;
+        throw runtime_error("Error: entity not found!");
     }
 
-    // Дружня функція для введення даних в асоціативний масив
-    friend istream& operator>>(istream& in, AssociativeArray& aa) {
-        string firstName, lastName, code;  // Змінні для введення даних
-        cout << "Введіть ім'я, прізвище і код: ";  // Запит користувача
-        in >> firstName >> lastName >> code;  // Зчитування введених даних
-        string fullName = firstName + " " + lastName;  // Формуємо повне ім'я
-        aa.add(fullName, code);  // Додаємо пару ім'я-код в масив
-        return in;  // Повертаємо потік
-    }
-
-    // Дружня функція для виведення асоціативного масиву у вигляді таблиці
-    friend ostream& operator<<(ostream& out, const AssociativeArray& aa) {
-        out << "+-------------------------+----------------+" << endl;  // Заголовок таблиці
-        out << "|         Ім'я           |      Код       |" << endl;  // Імена колонок
-        out << "+-------------------------+----------------+" << endl;
-        for (const auto& pair : aa.data) {  // Перебір всіх пар у масиві
-            out << "| " << setw(23) << left << pair.first  // Виведення імені
-                << " | " << setw(14) << left << pair.second << " |" << endl;  // Виведення коду
+    void display() {
+        for (int i = 0; i < size; i++) {
+            cout << "[ " << data[i].fullName << " ] -> [ " << data[i].code << " ]\n";
         }
-        out << "+-------------------------+----------------+" << endl;  // Закриття таблиці
-        return out;  // Повертаємо потік
     }
 };
 
-// Головна функція
+void addRandomEntries(AssociativeArray& aa, int count) {
+    string firstNames[] = {"Ivan", "Maria", "Oleg", "Anna", "Dmytro", "Olena", "Serhii", "Nadia", "Yurii", "Kateryna"};
+    string lastNames[] = {"Petrenko", "Koval", "Sydorenko", "Melnyk", "Tkachenko", "Bielov", "Shevchenko", "Kryvonos", "Havrylenko", "Bondarenko"};
+    
+    for (int i = 0; i < count; i++) { // Додаємо задану кількість записів
+        string fullName = firstNames[rand() % 10] + " " + lastNames[rand() % 10];
+        int code = rand() % 90000 + 10000;
+        aa.add(fullName, code);
+    }
+}
+
 int main() {
-    AssociativeArray aa;  // Створення об'єкта класу
-    int choice;  // Змінна для вибору режиму
+    srand(time(0));
+    AssociativeArray aa;
 
-    cout << "Оберіть режим: 1 - Ввести вручну, 2 - Згенерувати випадково: ";  // Запит режиму
-    cin >> choice;  // Зчитування вибору
+    cout << "Choose input method: \n1 - Manual entry\n2 - Random data\nEnter your choice: ";
+    int choice;
+    cin >> choice;
+    cin.ignore();
 
-    if (choice == 1) {  // Якщо вибрано введення вручну
-        int n;  // Кількість пар
-        cout << "Скільки пар ви хочете ввести? ";  // Запит кількості
-        cin >> n;  // Зчитування кількості
+    if (choice == 1) {
+        int n;
+        cout << "Enter number of entries: ";
+        cin >> n;
+        cin.ignore();
         for (int i = 0; i < n; i++) {
-            cin >> aa;  // Викликаємо функцію введення для кожної пари
+            string fullName;
+            int code;
+            cout << "Enter full name: ";
+            getline(cin, fullName);
+            cout << "Enter code (number): ";
+            cin >> code;
+            cin.ignore();
+            aa.add(fullName, code);
         }
-    } else if (choice == 2) {  // Якщо вибрано генерацію випадкових даних
-        aa.generateRandomData();  // Генерація випадкових даних
+    } else {
+        int n = rand() % 5 + 3;
+        addRandomEntries(aa, n);
     }
 
-    // Виведення асоціативного масиву
-    cout << "Асоціативний масив: " << endl;
-    cout << aa;  // Використовуємо перевантажену функцію виведення
+    cout << "Stored data:" << endl;
+    aa.display();
 
-    // Пошук за ключем (дозволяє багаторазовий пошук)
-    string firstName, lastName;  // Змінні для введення імені та прізвища
     while (true) {
-        cout << "Введіть ім'я та прізвище для пошуку (або 'exit' для виходу): ";  // Запит на введення
-        cin >> firstName;  // Введення імені
-        if (firstName == "exit") break;  // Якщо введено "exit", виходимо з циклу
-        cin >> lastName;  // Введення прізвища
-        string fullName = firstName + " " + lastName;  // Формуємо повне ім'я
+        string searchName;
+        cout << "\nEnter name to search (or type 'exit' to quit): ";
+        getline(cin, searchName);
+        if (searchName == "exit") break;
         try {
-            cout << "Код: " << aa[fullName] << endl;  // Пошук і виведення коду по імені
-        } catch (const runtime_error& e) {  // Якщо виникає помилка
-            cout << e.what() << endl;  // Виводимо повідомлення про помилку
+            cout << "Code: " << aa[searchName] << endl;
+        } catch (runtime_error& e) {
+            cout << e.what() << endl;
         }
     }
-
-    return 0;  // Завершення програми
+    return 0;
 }
